@@ -9,8 +9,9 @@
 @layer base {
   html {
     font-family: var(--font-sans);
-    color: #18181b;
-    background-color: #ffffff;
+    color: #1c1917;
+    background-color: #FAF7F2;
+    scroll-behavior: smooth;
   }
 
   .font-zh {
@@ -20,4 +21,145 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Custom subtle crimson scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #e2d7cb;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #8b1e1e;
+  }
+}
+
+/* Custom keyframes for lively interactions */
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(1deg);
+  }
+}
+
+@keyframes wiggle-cute {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(-6deg);
+  }
+  40% {
+    transform: rotate(6deg);
+  }
+  60% {
+    transform: rotate(-3deg);
+  }
+  80% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes pop-bounce {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(139, 30, 30, 0.45);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(139, 30, 30, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(139, 30, 30, 0);
+  }
+}
+
+@keyframes soundwave-bar {
+  0%, 100% {
+    height: 4px;
+  }
+  50% {
+    height: 18px;
+  }
+}
+
+.animate-float {
+  animation: float-slow 3.8s ease-in-out infinite;
+}
+
+.animate-float-gentle {
+  animation: float-gentle 4.5s ease-in-out infinite;
+}
+
+.animate-wiggle {
+  animation: wiggle-cute 2.4s ease-in-out infinite;
+}
+
+.animate-pop {
+  animation: pop-bounce 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2.2s infinite;
+}
+
+/* Deep lacquer crimson styles */
+.lacquer-red-gradient {
+  background: linear-gradient(135deg, #991b1b 0%, #7f1d1d 50%, #581010 100%);
+}
+
+.lacquer-red-soft {
+  background: linear-gradient(135deg, #fdf4f4 0%, #fae8e8 100%);
+}
+
+.crimson-glow {
+  box-shadow: 0 6px 20px -3px rgba(153, 27, 27, 0.28);
+}
+
+.crimson-glow-sm {
+  box-shadow: 0 3px 12px -2px rgba(153, 27, 27, 0.2);
+}
+
+.gold-glow {
+  box-shadow: 0 4px 16px -2px rgba(217, 119, 6, 0.25);
+}
+
+.card-lift {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -4px rgba(60, 30, 20, 0.08);
 }

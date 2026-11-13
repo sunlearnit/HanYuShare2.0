@@ -23,6 +23,7 @@ import { WritingGraderWorkspace } from './components/WritingGraderWorkspace';
 import { VocabularyWorkspace } from './components/VocabularyWorkspace';
 import { HskPracticeWorkspace } from './components/HskPracticeWorkspace';
 import { RoleplayWorkspace } from './components/RoleplayWorkspace';
+import { MascotCompanion } from './components/MascotCompanion';
 
 export default function App() {
   const { user, authReady, getIdToken } = useAuth();
@@ -155,7 +156,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900 flex">
+    <div className="min-h-screen bg-[#FAF7F2] text-stone-900 flex selection:bg-red-800 selection:text-white relative">
       <Sidebar
         activeTab={activeTab}
         onSelectTab={setActiveTab}
@@ -173,7 +174,7 @@ export default function App() {
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
 
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-20 lg:pb-8">
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-8">
           {activeTab === 'chat' && (
             <ChatWorkspace
               hskLevel={hskLevel}
@@ -216,6 +217,9 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Floating Interactive Mascot Companion */}
+      <MascotCompanion />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, RotateCcw, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Send, RotateCcw, Loader2, AlertCircle, CheckCircle2, Sparkles, MessageSquare } from 'lucide-react';
 import type { ChatMessage, HskLevel } from '../types/learning';
 import { sendTeacherChat } from '../services/apiClient';
 import {
@@ -8,6 +8,7 @@ import {
 } from '../services/firestoreSync';
 import { useAuth } from '../contexts/AuthContext';
 import { ChineseBlock } from './ChineseBlock';
+import { MascotSticker } from './MascotSticker';
 
 interface ChatWorkspaceProps {
   hskLevel: HskLevel;
@@ -98,18 +99,20 @@ export function ChatWorkspace({
             ? m.textVi
             : [
                 m.textVi,
-                ...(m.chineseSegments ?? []).map((s) => `${s.hanzi} (${s.pinyin}) - ${s.vietnamese}`),
-              ].join('\n'),
+                m.chineseSegments?.map((s) => `${s.hanzi} (${s.pinyin})`).join(' '),
+              ]
+                .filter(Boolean)
+                .join('\n'),
       }));
 
       const reply = await sendTeacherChat({
         message: textToSend,
-        history: historyPayload,
         hskLevel,
+        history: historyPayload,
       });
 
       const assistantMessage: ChatMessage = {
-        id: `ai-${Date.now()}`,
+        id: `assistant-${Date.now()}`,
         role: 'assistant',
         textVi: reply.textVi,
         chineseSegments: reply.chineseSegments,
@@ -118,7 +121,8 @@ export function ChatWorkspace({
         createdAt: Date.now(),
       };
 
-      onUpdateMessages([...nextMessages, assistantMessage]);
+      const finalMessages = [...nextMessages, assistantMessage];
+      onUpdateMessages(finalMessages);
 
       if (user) {
         void saveChatMessageToFirestore(user.uid, assistantMessage).catch((err) => {
@@ -127,44 +131,48 @@ export function ChatWorkspace({
       }
     } catch (err) {
       setErrorMsg(
-        err instanceof Error ? err.message : 'Không thể kết nối gia sư AI. Vui lòng thử lại.'
+        err instanceof Error ? err.message : 'Không thể kết nối với gia sư. Vui lòng thử lại.'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (loading) return;
-    setErrorMsg(null);
     onUpdateMessages([]);
+    setErrorMsg(null);
     if (user) {
-      void clearChatMessagesInFirestore(user.uid).catch((err) => {
-        console.error('Failed to clear Firestore chat history:', err);
-      });
+      try {
+        await clearChatMessagesInFirestore(user.uid);
+      } catch (err) {
+        console.error('Failed to clear chat history in Firestore:', err);
+      }
     }
   };
 
-  const starters = STARTER_PROMPTS[hskLevel] ?? STARTER_PROMPTS[2];
+  const starters = STARTER_PROMPTS[hskLevel] ?? STARTER_PROMPTS[1];
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col h-[calc(100vh-11.5rem)] lg:h-[calc(100vh-7.5rem)]">
+    <div className="max-w-4xl mx-auto flex flex-col h-[calc(100vh-11.5rem)] lg:h-[calc(100vh-8.5rem)]">
       {/* Top session bar */}
-      <div className="flex items-center justify-between gap-3 pb-3 border-b border-zinc-200 shrink-0">
-        <div className="text-xs sm:text-sm text-zinc-500">
-          <span>Gia sư tiếng Trung</span>
-          <span aria-hidden="true" className="mx-2">·</span>
-          <span>Đang điều chỉnh theo HSK {hskLevel}</span>
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#EFE7DE] shrink-0">
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-stone-600">
+          <span className="font-semibold text-red-900">Gia sư Tiểu Du AI</span>
+          <span aria-hidden="true" className="text-stone-300">·</span>
+          <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-800 text-[11px] font-semibold border border-red-200/50">
+            Mục tiêu HSK {hskLevel}
+          </span>
         </div>
         {messages.length > 0 && (
           <button
             type="button"
             onClick={handleClear}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 hover:text-red-800 transition-colors whitespace-nowrap shrink-0 shadow-sm"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Cuộc trò chuyện mới</span>
+            <span>Đoạn chat mới</span>
           </button>
         )}
       </div>
@@ -172,27 +180,49 @@ export function ChatWorkspace({
       {/* Chat scroll area */}
       <div className="flex-1 overflow-y-auto py-5 space-y-5 pr-1">
         {messages.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-6 sm:p-8 space-y-6">
-            <div className="space-y-2 max-w-2xl">
-              <h2 className="text-lg font-semibold text-zinc-900">
-                Chào bạn! Mình là gia sư tiếng Trung HanYu Share.
-              </h2>
-              <p className="text-sm text-zinc-600 leading-relaxed">
-                Bạn có thể hỏi nghĩa từ, phân biệt ngữ pháp, nhờ kiểm tra một câu tiếng Trung vừa viết hoặc luyện đặt câu theo trình độ HSK {hskLevel}.
-              </p>
+          <div className="rounded-3xl border border-red-200/70 bg-gradient-to-br from-white via-[#FCFAF7] to-red-50/30 p-6 sm:p-8 space-y-6 shadow-sm">
+            {/* Mascot Greeting Banner */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+              <div className="shrink-0 p-2 rounded-2xl bg-gradient-to-br from-red-800 to-amber-900 shadow-md shadow-red-950/15 ring-2 ring-amber-300/40">
+                <div className="w-20 h-20 rounded-xl bg-white flex items-center justify-center overflow-hidden">
+                  <MascotSticker name="01_reading" size="lg" animate="float-gentle" />
+                </div>
+              </div>
+
+              <div className="space-y-2 text-center sm:text-left flex-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-100/80 text-red-800 text-xs font-bold border border-red-200/60">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Chào mừng bạn đến với HanYu Share</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
+                  Chào bạn! Mình là Tiểu Du, gia sư tiếng Trung của bạn.
+                </h2>
+                <p className="text-sm text-stone-600 leading-relaxed max-w-2xl">
+                  Bạn có thể hỏi bất kỳ thắc mắc nào về ngữ pháp, nhờ kiểm tra một câu vừa viết, luyện dịch câu Việt - Trung, hoặc hỏi cách dùng từ chuẩn theo cấp độ <strong className="text-red-900">HSK {hskLevel}</strong>.
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-2.5">
-              <p className="text-xs font-medium text-zinc-500">Gợi ý câu hỏi cho HSK {hskLevel}</p>
+            {/* Quick Prompts */}
+            <div className="space-y-3 pt-2 border-t border-[#EFE7DE]">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                  Câu hỏi gợi ý nhanh cho HSK {hskLevel}
+                </p>
+                <span className="text-[11px] text-red-800 font-semibold">Bấm để hỏi ngay</span>
+              </div>
               <div className="grid gap-2.5 sm:grid-cols-1">
                 {starters.map((promptText, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => void handleSend(promptText)}
-                    className="text-left rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-800 hover:border-red-300 hover:bg-red-50/30 transition-colors"
+                    className="text-left rounded-2xl border border-stone-200/90 bg-white px-4 py-3 text-sm text-stone-800 hover:border-red-400 hover:bg-red-50/40 hover:text-red-950 transition-all card-lift flex items-center justify-between gap-3 group shadow-xs"
                   >
-                    {promptText}
+                    <span className="leading-snug">{promptText}</span>
+                    <span className="shrink-0 text-xs font-semibold text-red-800 opacity-0 group-hover:opacity-100 transition-opacity">
+                      Hỏi →
+                    </span>
                   </button>
                 ))}
               </div>
@@ -202,8 +232,8 @@ export function ChatWorkspace({
           messages.map((msg) => {
             if (msg.role === 'user') {
               return (
-                <div key={msg.id} className="flex justify-end">
-                  <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-br-sm bg-red-600 text-white px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
+                <div key={msg.id} className="flex justify-end animate-pop">
+                  <div className="max-w-[85%] sm:max-w-[75%] rounded-3xl rounded-br-md bg-gradient-to-r from-red-800 to-red-900 text-white px-5 py-3.5 text-sm leading-relaxed whitespace-pre-wrap shadow-md shadow-red-950/15 border border-red-700/50">
                     {msg.textVi}
                   </div>
                 </div>
@@ -211,19 +241,27 @@ export function ChatWorkspace({
             }
 
             return (
-              <div key={msg.id} className="flex justify-start">
-                <div className="max-w-[92%] sm:max-w-[85%] rounded-2xl rounded-bl-sm border border-zinc-200 bg-white px-4 sm:px-5 py-4 space-y-4">
-                  <p className="text-sm text-zinc-800 leading-relaxed whitespace-pre-wrap">
+              <div key={msg.id} className="flex items-start gap-3 justify-start animate-pop">
+                {/* Assistant Mascot Avatar */}
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-800 to-amber-950 p-0.5 shrink-0 shadow-sm mt-1">
+                  <div className="w-full h-full rounded-[9px] bg-white flex items-center justify-center overflow-hidden">
+                    <MascotSticker name="01_reading" size="xs" className="w-7 h-7" />
+                  </div>
+                </div>
+
+                <div className="max-w-[90%] sm:max-w-[85%] rounded-3xl rounded-tl-md border border-[#EFE7DE] bg-white px-5 py-4 space-y-4 shadow-sm">
+                  <p className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap">
                     {msg.textVi}
                   </p>
 
+                  {/* Grammar correction card */}
                   {msg.correction?.hasError && (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3.5 space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-800">
-                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                        <span>Góp ý sửa câu tiếng Trung</span>
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                        <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>Tiểu Du gợi ý chỉnh sửa câu</span>
                       </div>
-                      <p className="text-xs text-zinc-500 line-through font-zh">
+                      <p className="text-xs text-stone-400 line-through font-zh">
                         {msg.correction.original}
                       </p>
                       <ChineseBlock
@@ -235,12 +273,13 @@ export function ChatWorkspace({
                     </div>
                   )}
 
+                  {/* Chinese Segments */}
                   {msg.chineseSegments && msg.chineseSegments.length > 0 && (
-                    <div className="border-t border-zinc-100 pt-3 space-y-3">
+                    <div className="border-t border-stone-100 pt-3 space-y-3">
                       {msg.chineseSegments.map((seg, idx) => (
                         <div
                           key={idx}
-                          className="rounded-xl bg-zinc-50 border border-zinc-200/80 p-3.5"
+                          className="rounded-2xl bg-[#FCFAF7] border border-[#EFE7DE] p-3.5 card-lift"
                         >
                           <ChineseBlock
                             hanzi={seg.hanzi}
@@ -254,17 +293,18 @@ export function ChatWorkspace({
                     </div>
                   )}
 
+                  {/* Follow-up suggestions */}
                   {msg.suggestionsVi && msg.suggestionsVi.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <div className="flex flex-wrap gap-2 pt-1 border-t border-stone-100">
                       {msg.suggestionsVi.map((suggestion, idx) => (
                         <button
                           key={idx}
                           type="button"
                           disabled={loading}
                           onClick={() => void handleSend(suggestion)}
-                          className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700 hover:border-red-300 hover:bg-red-50/40 transition-colors text-left"
+                          className="rounded-xl border border-red-200/80 bg-red-50/50 px-3 py-1.5 text-xs font-semibold text-red-900 hover:border-red-400 hover:bg-red-100/70 transition-all text-left card-lift"
                         >
-                          {suggestion}
+                          {suggestion} →
                         </button>
                       ))}
                     </div>
@@ -275,11 +315,17 @@ export function ChatWorkspace({
           })
         )}
 
+        {/* Loading state with cute Xiao Yu note-taking sticker */}
         {loading && (
-          <div className="flex justify-start">
-            <div className="inline-flex items-center gap-2.5 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
-              <Loader2 className="w-4 h-4 animate-spin text-red-600" />
-              <span>Gia sư đang soạn câu trả lời...</span>
+          <div className="flex items-center gap-3 justify-start animate-pop">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-800 to-amber-950 p-0.5 shrink-0 shadow-sm">
+              <div className="w-full h-full rounded-[9px] bg-white flex items-center justify-center overflow-hidden">
+                <MascotSticker name="05_writing" size="xs" animate="wiggle" className="w-7 h-7" />
+              </div>
+            </div>
+            <div className="inline-flex items-center gap-2.5 rounded-2xl border border-red-200/80 bg-white px-4 py-3 text-xs sm:text-sm font-semibold text-red-950 shadow-sm">
+              <Loader2 className="w-4 h-4 animate-spin text-red-800" />
+              <span>Tiểu Du đang suy nghĩ và tra cứu câu trả lời...</span>
             </div>
           </div>
         )}
@@ -287,9 +333,9 @@ export function ChatWorkspace({
         {errorMsg && (
           <div
             role="alert"
-            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 text-sm text-red-800"
+            className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 text-sm text-red-900 shadow-sm"
           >
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
             <div className="flex-1">{errorMsg}</div>
           </div>
         )}
@@ -297,13 +343,13 @@ export function ChatWorkspace({
         <div ref={scrollEndRef} />
       </div>
 
-      {/* Input composer */}
+      {/* Input composer with crimson accents */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           void handleSend();
         }}
-        className="pt-3 border-t border-zinc-200 bg-white shrink-0"
+        className="pt-3 border-t border-[#EFE7DE] bg-[#FAF7F2] shrink-0"
       >
         <div className="flex items-end gap-2.5">
           <div className="flex-1 relative">
@@ -317,20 +363,20 @@ export function ChatWorkspace({
                 }
               }}
               rows={2}
-              placeholder="Nhập câu hỏi tiếng Việt hoặc câu tiếng Trung cần kiểm tra..."
-              className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-red-600 focus:outline-none"
+              placeholder="Nhập câu hỏi tiếng Việt hoặc câu tiếng Trung bạn muốn kiểm tra..."
+              className="w-full resize-none rounded-2xl border border-[#EFE7DE] bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-red-800 focus:ring-1 focus:ring-red-800 focus:outline-none shadow-sm transition-all"
             />
-            <span className="absolute right-3 bottom-2 text-[11px] text-zinc-400 tabular-nums">
+            <span className="absolute right-3 bottom-2.5 text-[11px] text-stone-400 tabular-nums font-mono">
               {input.length}/{MAX_INPUT_LEN}
             </span>
           </div>
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700 disabled:bg-zinc-200 disabled:text-zinc-500 transition-colors min-h-[44px] whitespace-nowrap shrink-0"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-800 to-red-900 px-5 py-3.5 text-sm font-bold text-white shadow-md shadow-red-950/20 hover:from-red-700 hover:to-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[48px] whitespace-nowrap shrink-0 card-lift"
           >
             <Send className="w-4 h-4" />
-            <span className="hidden sm:inline">Gửi</span>
+            <span className="hidden sm:inline">Gửi câu hỏi</span>
           </button>
         </div>
       </form>

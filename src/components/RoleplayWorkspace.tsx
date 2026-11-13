@@ -9,11 +9,18 @@ import {
   ArrowLeft,
   MessageSquareText,
   Mic,
+  Sparkles,
+  Coffee,
+  Car,
+  ShoppingBag,
+  Stethoscope,
+  Briefcase,
 } from 'lucide-react';
 import type { HskLevel, LanguageCorrection, RoleplayScenario } from '../types/learning';
 import { sendRoleplayTurn } from '../services/apiClient';
 import { ChineseBlock } from './ChineseBlock';
 import { LiveVoicePanel } from './LiveVoicePanel';
+import { MascotSticker } from './MascotSticker';
 
 interface RoleplayWorkspaceProps {
   hskLevel: HskLevel;
@@ -30,11 +37,19 @@ interface RoleplayTurn {
   suggestedReplies?: { hanzi: string; pinyin: string; vi: string }[];
 }
 
+const SCENARIO_ICONS: Record<string, typeof Coffee> = {
+  cafe: Coffee,
+  taxi: Car,
+  shopping: ShoppingBag,
+  clinic: Stethoscope,
+  interview: Briefcase,
+};
+
 const SCENARIOS: RoleplayScenario[] = [
   {
     id: 'cafe',
-    titleVi: 'Đặt đồ uống tại quán cà phê',
-    descriptionVi: 'Luyện gọi món, hỏi độ ngọt, đá và thanh toán.',
+    titleVi: 'Gọi đồ uống tại quán cà phê',
+    descriptionVi: 'Luyện gọi món, chỉnh độ ngọt, đá và thanh toán quét mã.',
     partnerRoleVi: 'Nhân viên pha chế (Barista)',
     partnerRoleZh: '咖啡店员',
     starterHanzi: '你好！欢迎光临，请问今天想喝点什么？',
@@ -44,7 +59,7 @@ const SCENARIOS: RoleplayScenario[] = [
   {
     id: 'taxi',
     titleVi: 'Hỏi đường & đi taxi',
-    descriptionVi: 'Nói địa điểm muốn đến, hỏi thời gian di chuyển và giá cước.',
+    descriptionVi: 'Nói địa điểm muốn đến, hỏi thời gian di chuyển và cước phí.',
     partnerRoleVi: 'Tài xế taxi',
     partnerRoleZh: '出租车司机',
     starterHanzi: '你好，上车吧！请问你要去哪里？',
@@ -54,7 +69,7 @@ const SCENARIOS: RoleplayScenario[] = [
   {
     id: 'shopping',
     titleVi: 'Mua sắm & hỏi giá quần áo',
-    descriptionVi: 'Hỏi size, thử đồ, màu sắc và thương lượng giá cả.',
+    descriptionVi: 'Hỏi kích cỡ (size), thử đồ, màu sắc và thương lượng giá cả.',
     partnerRoleVi: 'Nhân viên cửa hàng thời trang',
     partnerRoleZh: '服装店员',
     starterHanzi: '你好！请随便看看，想找什么款式的衣服？',
@@ -74,8 +89,8 @@ const SCENARIOS: RoleplayScenario[] = [
   {
     id: 'interview',
     titleVi: 'Phỏng vấn xin việc tiếng Trung',
-    descriptionVi: 'Giới thiệu bản thân, kinh nghiệm và lý do ứng tuyển.',
-    partnerRoleVi: 'Nhà tuyển dụng',
+    descriptionVi: 'Giới thiệu bản thân, kinh nghiệm và lý do ứng tuyển vào công ty.',
+    partnerRoleVi: 'Nhà tuyển dụng (HR)',
     partnerRoleZh: '面试官',
     starterHanzi: '你好！请先简单介绍一下你自己吧。',
     starterPinyin: 'Nǐ hǎo! Qǐng xiān jiǎndān jièshào yíxià nǐ zìjǐ ba.',
@@ -186,62 +201,95 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
 
   if (!activeScenario) {
     return (
-      <div className="max-w-5xl mx-auto space-y-6">
-        <section className="space-y-3">
-          <div>
-            <h2 className="text-base font-semibold text-zinc-900">
-              Chọn tình huống đóng vai · HSK {hskLevel}
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-500 mt-0.5">
-              Luyện hội thoại bằng văn bản hoặc gọi giọng nói trực tiếp với AI (Gemini Live API) theo trình độ HSK {hskLevel}.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {SCENARIOS.map((sc) => (
-              <div
-                key={sc.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 flex flex-col justify-between gap-4"
-              >
-                <div className="space-y-1.5">
-                  <p className="text-xs text-zinc-500">
-                    Vai đối thoại · {sc.partnerRoleVi}
-                  </p>
-                  <h3 className="text-base font-semibold text-zinc-900">{sc.titleVi}</h3>
-                  <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed">
-                    {sc.descriptionVi}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => startScenario(sc, 'text')}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-800 hover:bg-zinc-50 min-h-[38px]"
-                  >
-                    <MessageSquareText className="w-3.5 h-3.5" />
-                    <span>Nhắn tin</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => startScenario(sc, 'voice')}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 min-h-[38px]"
-                  >
-                    <Mic className="w-3.5 h-3.5" />
-                    <span>Gọi luyện nói</span>
-                  </button>
-                </div>
+      <div className="max-w-5xl mx-auto space-y-7 animate-pop">
+        {/* Welcome Lounge Banner */}
+        <section className="rounded-3xl border border-red-200/70 bg-gradient-to-br from-white via-[#FCFAF7] to-red-50/40 p-6 sm:p-8 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+            <div className="shrink-0 p-2 rounded-2xl bg-gradient-to-br from-red-800 to-amber-900 shadow-md ring-2 ring-amber-300/40">
+              <div className="w-20 h-20 rounded-xl bg-white flex items-center justify-center overflow-hidden">
+                <MascotSticker name="12_cozy" size="lg" animate="float-gentle" />
               </div>
-            ))}
+            </div>
+
+            <div className="space-y-2 text-center sm:text-left flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-100/80 text-red-800 text-xs font-bold border border-red-200/60">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>Phòng luyện phản xạ giao tiếp thực tế</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
+                Chọn tình huống đóng vai · Chuẩn HSK {hskLevel}
+              </h2>
+              <p className="text-sm text-stone-600 leading-relaxed max-w-2xl">
+                Bạn có thể trò chuyện bằng tin nhắn chữ Hán hoặc bấm <strong className="text-red-900">"Gọi luyện nói"</strong> để trò chuyện trực tiếp 2 chiều với AI qua giọng nói như đang gọi điện thoại cho người bản xứ!
+              </p>
+            </div>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-5 sm:p-6 space-y-4">
+        {/* Scenarios Grid */}
+        <section className="space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+            Tình huống giao tiếp phổ biến
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {SCENARIOS.map((sc) => {
+              const IconComp = SCENARIO_ICONS[sc.id] ?? MessageSquareText;
+              return (
+                <div
+                  key={sc.id}
+                  className="rounded-3xl border border-[#EFE7DE] bg-white p-5 sm:p-6 flex flex-col justify-between gap-4 shadow-sm card-lift"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-9 h-9 rounded-xl bg-red-50 text-red-800 flex items-center justify-center border border-red-200/60">
+                        <IconComp className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-bold text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">
+                        {sc.partnerRoleVi}
+                      </span>
+                    </div>
+
+                    <h4 className="text-base font-bold text-stone-900">{sc.titleVi}</h4>
+                    <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+                      {sc.descriptionVi}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-100">
+                    <button
+                      type="button"
+                      onClick={() => startScenario(sc, 'text')}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-bold text-stone-700 hover:border-red-300 hover:text-red-900 min-h-[40px] transition-colors shadow-xs"
+                    >
+                      <MessageSquareText className="w-3.5 h-3.5 text-red-800" />
+                      <span>Nhắn tin</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startScenario(sc, 'voice')}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-red-800 to-red-900 px-3 py-2 text-xs font-bold text-white shadow-md shadow-red-950/20 hover:from-red-700 hover:to-red-800 min-h-[40px] transition-all card-lift"
+                    >
+                      <Mic className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Gọi luyện nói</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Custom Scenario Form */}
+        <section className="rounded-3xl border border-[#EFE7DE] bg-gradient-to-br from-white to-[#FCFAF7] p-5 sm:p-7 space-y-4 shadow-sm">
           <div>
-            <h3 className="text-sm font-semibold text-zinc-900">
-              Hoặc tạo tình huống riêng của bạn
-            </h3>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              Ví dụ: Nhận phòng khách sạn ở Thượng Hải, Trả lại hàng bị lỗi, Nói chuyện với bạn cùng phòng.
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <h3 className="text-base font-bold text-stone-900">
+                Hoặc tạo tình huống hội thoại tự do
+              </h3>
+            </div>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Ví dụ: Thuê phòng khách sạn ở Thượng Hải, Mặc cả ở chợ đêm Bắc Kinh, Nhờ người dân chụp ảnh giúp...
             </p>
           </div>
 
@@ -250,22 +298,22 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
               type="text"
               value={customTitle}
               onChange={(e) => setCustomTitle(e.target.value.slice(0, 120))}
-              placeholder="Tên tình huống (bắt buộc)..."
-              className="sm:col-span-6 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-red-600 focus:outline-none min-h-[44px]"
+              placeholder="Tên tình huống (vd: Trả lại hàng đã mua)..."
+              className="sm:col-span-6 rounded-2xl border border-[#EFE7DE] bg-[#FAF7F2] px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:bg-white focus:border-red-800 focus:outline-none min-h-[46px] shadow-xs"
             />
             <input
               type="text"
               value={customRole}
               onChange={(e) => setCustomRole(e.target.value.slice(0, 80))}
-              placeholder="Vai của AI (vd: Lễ tân khách sạn)..."
-              className="sm:col-span-4 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-red-600 focus:outline-none min-h-[44px]"
+              placeholder="Vai của AI (vd: Thu ngân siêu thị)..."
+              className="sm:col-span-4 rounded-2xl border border-[#EFE7DE] bg-[#FAF7F2] px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:bg-white focus:border-red-800 focus:outline-none min-h-[46px] shadow-xs"
             />
             <button
               type="submit"
               disabled={!customTitle.trim()}
-              className="sm:col-span-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:bg-zinc-200 disabled:text-zinc-500 transition-colors min-h-[44px]"
+              className="sm:col-span-2 rounded-2xl bg-gradient-to-r from-red-800 to-red-900 px-4 py-3 text-sm font-bold text-white shadow-md shadow-red-950/20 hover:from-red-700 hover:to-red-800 disabled:opacity-50 transition-all min-h-[46px] card-lift"
             >
-              Vào vai
+              Vào vai ngay
             </button>
           </form>
         </section>
@@ -277,53 +325,53 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
     [...turns].reverse().find((t) => t.role === 'assistant')?.suggestedReplies ?? [];
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col h-[calc(100vh-11.5rem)] lg:h-[calc(100vh-7.5rem)]">
+    <div className="max-w-4xl mx-auto flex flex-col h-[calc(100vh-11.5rem)] lg:h-[calc(100vh-8.5rem)]">
       {/* Active Scenario Header + Mode Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-200 shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#EFE7DE] shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
             onClick={() => setActiveScenario(null)}
-            className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 hover:border-red-300 hover:text-red-900 whitespace-nowrap shrink-0 transition-colors shadow-xs"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Đổi tình huống</span>
           </button>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-zinc-900 truncate">
+            <h2 className="text-sm sm:text-base font-bold text-stone-900 truncate">
               {activeScenario.titleVi}
             </h2>
-            <p className="text-xs text-zinc-500 truncate">
+            <p className="text-xs text-stone-500 truncate">
               {activeScenario.partnerRoleVi} · HSK {hskLevel}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-100">
+          <div className="flex items-center gap-1 p-1 rounded-2xl bg-[#FAF7F2] border border-[#EFE7DE]">
             <button
               type="button"
               onClick={() => setMode('text')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
                 mode === 'text'
-                  ? 'bg-white text-zinc-900 shadow-sm'
-                  : 'text-zinc-600 hover:text-zinc-900'
+                  ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
+                  : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <MessageSquareText className="w-3.5 h-3.5" />
+              <MessageSquareText className="w-3.5 h-3.5 text-red-800" />
               <span>Nhắn tin</span>
             </button>
             <button
               type="button"
               onClick={() => setMode('voice')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
                 mode === 'voice'
-                  ? 'bg-white text-red-700 shadow-sm'
-                  : 'text-zinc-600 hover:text-zinc-900'
+                  ? 'bg-gradient-to-r from-red-800 to-red-900 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-red-900'
               }`}
             >
               <Mic className="w-3.5 h-3.5" />
-              <span>Gọi trực tiếp</span>
+              <span>Gọi thoại</span>
             </button>
           </div>
 
@@ -332,7 +380,7 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
               type="button"
               onClick={() => startScenario(activeScenario, 'text')}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 hover:text-red-800 whitespace-nowrap shrink-0 shadow-xs transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Làm mới</span>
@@ -355,8 +403,8 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
             {turns.map((turn) => {
               if (turn.role === 'user') {
                 return (
-                  <div key={turn.id} className="flex justify-end">
-                    <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-br-sm bg-red-600 text-white px-4 py-3 font-zh text-base leading-relaxed">
+                  <div key={turn.id} className="flex justify-end animate-pop">
+                    <div className="max-w-[85%] sm:max-w-[75%] rounded-3xl rounded-br-md bg-gradient-to-r from-red-800 to-red-900 text-white px-5 py-3.5 font-zh text-base leading-relaxed shadow-md shadow-red-950/15 border border-red-700/50">
                       {turn.hanzi}
                     </div>
                   </div>
@@ -364,15 +412,15 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
               }
 
               return (
-                <div key={turn.id} className="flex justify-start">
-                  <div className="max-w-[92%] sm:max-w-[85%] rounded-2xl rounded-bl-sm border border-zinc-200 bg-white px-4 sm:px-5 py-4 space-y-3">
+                <div key={turn.id} className="flex justify-start animate-pop">
+                  <div className="max-w-[92%] sm:max-w-[85%] rounded-3xl rounded-tl-md border border-[#EFE7DE] bg-white px-5 py-4 space-y-3.5 shadow-sm">
                     {turn.correction?.hasError && (
-                      <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-800">
-                          <CheckCircle2 className="w-4 h-4 shrink-0" />
-                          <span>Góp ý sửa câu vừa rồi của bạn</span>
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3.5 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                          <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span>Góp ý cách diễn đạt tự nhiên hơn</span>
                         </div>
-                        <p className="text-xs text-zinc-500 line-through font-zh">
+                        <p className="text-xs text-stone-400 line-through font-zh">
                           {turn.correction.original}
                         </p>
                         <ChineseBlock
@@ -384,8 +432,11 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
                       </div>
                     )}
 
-                    <div className="text-xs font-medium text-zinc-500">
-                      {activeScenario.partnerRoleVi}
+                    <div className="flex items-center gap-2 border-b border-stone-100 pb-2">
+                      <span className="w-2 h-2 rounded-full bg-red-800" />
+                      <span className="text-xs font-bold text-stone-700">
+                        {activeScenario.partnerRoleVi}
+                      </span>
                     </div>
 
                     <ChineseBlock
@@ -394,6 +445,7 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
                       vietnamese={turn.vi}
                       showPinyin={showPinyin}
                       allowLocalPeek
+                      large
                     />
                   </div>
                 </div>
@@ -401,10 +453,10 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
             })}
 
             {loading && (
-              <div className="flex justify-start">
-                <div className="inline-flex items-center gap-2.5 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
-                  <Loader2 className="w-4 h-4 animate-spin text-red-600" />
-                  <span>{activeScenario.partnerRoleVi} đang phản hồi...</span>
+              <div className="flex justify-start animate-pop">
+                <div className="inline-flex items-center gap-2.5 rounded-2xl border border-red-200/80 bg-white px-4 py-3 text-xs sm:text-sm font-semibold text-red-950 shadow-sm">
+                  <Loader2 className="w-4 h-4 animate-spin text-red-800" />
+                  <span>{activeScenario.partnerRoleVi} đang trả lời bạn...</span>
                 </div>
               </div>
             )}
@@ -412,9 +464,9 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
             {errorMsg && (
               <div
                 role="alert"
-                className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 text-sm text-red-800"
+                className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 text-sm text-red-900 shadow-xs"
               >
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <AlertCircle className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
                 <span>{errorMsg}</span>
               </div>
             )}
@@ -423,21 +475,21 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
           </div>
 
           {latestSuggestions.length > 0 && !loading && (
-            <div className="pb-2.5 flex flex-wrap items-center gap-2 shrink-0">
-              <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
+            <div className="pb-3 flex flex-wrap items-center gap-2 shrink-0 border-t border-[#EFE7DE] pt-2.5">
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-stone-500">
                 <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
-                <span>Gợi ý đáp lại:</span>
+                <span>Gợi ý câu đối đáp:</span>
               </span>
               {latestSuggestions.map((s, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => void handleSend(s.hanzi)}
-                  className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-left text-xs hover:border-red-300 hover:bg-red-50/40 transition-colors"
+                  className="rounded-xl border border-red-200/80 bg-red-50/60 px-3.5 py-1.5 text-left text-xs hover:border-red-400 hover:bg-red-100/80 transition-all card-lift"
                 >
-                  <span className="font-zh font-medium text-zinc-900">{s.hanzi}</span>
-                  {showPinyin && <span className="text-zinc-500 ml-1.5">({s.pinyin})</span>}
-                  <span className="text-zinc-600 ml-1.5">· {s.vi}</span>
+                  <span className="font-zh font-bold text-stone-900">{s.hanzi}</span>
+                  {showPinyin && <span className="text-stone-500 ml-1.5 font-mono">({s.pinyin})</span>}
+                  <span className="text-red-900 ml-1.5 font-medium">· {s.vi}</span>
                 </button>
               ))}
             </div>
@@ -448,23 +500,23 @@ export function RoleplayWorkspace({ hskLevel, showPinyin }: RoleplayWorkspacePro
               e.preventDefault();
               void handleSend();
             }}
-            className="pt-3 border-t border-zinc-200 bg-white shrink-0"
+            className="pt-3 border-t border-[#EFE7DE] bg-[#FAF7F2] shrink-0"
           >
             <div className="flex items-end gap-2.5">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value.slice(0, 1000))}
-                placeholder="Nhập câu trả lời bằng tiếng Trung (hoặc bấm gợi ý phía trên)..."
-                className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-red-600 focus:outline-none min-h-[44px]"
+                placeholder="Nhập câu trả lời bằng tiếng Trung (hoặc bấm gợi ý bên trên)..."
+                className="flex-1 rounded-2xl border border-[#EFE7DE] bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-red-800 focus:outline-none focus:ring-1 focus:ring-red-800 min-h-[46px] shadow-xs transition-all"
               />
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700 disabled:bg-zinc-200 disabled:text-zinc-500 transition-colors min-h-[44px] whitespace-nowrap shrink-0"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-800 to-red-900 px-5 py-3 text-sm font-bold text-white shadow-md shadow-red-950/20 hover:from-red-700 hover:to-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[46px] whitespace-nowrap shrink-0 card-lift"
               >
                 <Send className="w-4 h-4" />
-                <span className="hidden sm:inline">Gửi</span>
+                <span className="hidden sm:inline">Đáp lại</span>
               </button>
             </div>
           </form>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, Phone, PhoneOff, Loader2, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, Phone, PhoneOff, Loader2, AlertCircle, Sparkles, Volume2 } from 'lucide-react';
 import type { HskLevel } from '../types/learning';
+import { MascotSticker } from './MascotSticker';
 
 interface LiveVoicePanelProps {
   hskLevel: HskLevel;
@@ -99,11 +100,10 @@ export function LiveVoicePanel({
       outputCtxRef.current = null;
     }
     if (wsRef.current) {
-      if (
-        wsRef.current.readyState === WebSocket.OPEN ||
-        wsRef.current.readyState === WebSocket.CONNECTING
-      ) {
+      try {
         wsRef.current.close();
+      } catch {
+        // Ignore close error
       }
       wsRef.current = null;
     }
@@ -114,6 +114,32 @@ export function LiveVoicePanel({
       cleanupSession();
     };
   }, []);
+
+  const playAudioChunk = (base64Audio: string) => {
+    const ctx = outputCtxRef.current;
+    if (!ctx) return;
+    try {
+      const float32 = base64ToFloat32Pcm(base64Audio);
+      const buffer = ctx.createBuffer(1, float32.length, 24000);
+      buffer.copyToChannel(float32, 0);
+
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+
+      const now = ctx.currentTime;
+      const start = Math.max(now, nextStartTimeRef.current);
+      source.start(start);
+      nextStartTimeRef.current = start + buffer.duration;
+
+      activeSourcesRef.current.add(source);
+      source.onended = () => {
+        activeSourcesRef.current.delete(source);
+      };
+    } catch {
+      // Ignore audio decode jitter
+    }
+  };
 
   const appendTranscript = (speaker: 'user' | 'assistant', text: string) => {
     const trimmed = text.trim();
@@ -126,73 +152,67 @@ export function LiveVoicePanel({
           { ...last, text: `${last.text} ${trimmed}`.trim() },
         ];
       }
-      return [...prev, { id: `tr-${Date.now()}-${Math.random()}`, speaker, text: trimmed }];
+      return [
+        ...prev,
+        {
+          id: `${speaker}-${Date.now()}-${Math.random()}`,
+          speaker,
+          text: trimmed,
+        },
+      ];
     });
   };
 
-  const playAudioChunk = (base64Audio: string) => {
-    const ctx = outputCtxRef.current;
-    if (!ctx) return;
-
-    const samples = base64ToFloat32Pcm(base64Audio);
-    if (samples.length === 0) return;
-
-    const buffer = ctx.createBuffer(1, samples.length, 24000);
-    buffer.getChannelData(0).set(samples);
-
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(ctx.destination);
-
-    const now = ctx.currentTime;
-    const startAt = Math.max(now, nextStartTimeRef.current);
-    source.start(startAt);
-    nextStartTimeRef.current = startAt + buffer.duration;
-
-    activeSourcesRef.current.add(source);
-    source.onended = () => {
-      activeSourcesRef.current.delete(source);
-    };
-  };
-
   const startLiveSession = async () => {
-    cleanupSession();
     setErrorMsg(null);
-    setTranscripts([]);
-    setMuted(false);
-    mutedRef.current = false;
     setStatus('connecting');
+    cleanupSession();
 
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = mediaStream;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          sampleRate: 16000,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      });
+      streamRef.current = stream;
 
-      const inputCtx = new AudioContext({ sampleRate: 16000 });
-      const outputCtx = new AudioContext({ sampleRate: 24000 });
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      const inputCtx = new AudioCtx({ sampleRate: 16000 });
+      const outputCtx = new AudioCtx({ sampleRate: 24000 });
       inputCtxRef.current = inputCtx;
       outputCtxRef.current = outputCtx;
-      nextStartTimeRef.current = outputCtx.currentTime;
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const params = new URLSearchParams({
-        hskLevel: String(hskLevel),
-        scenario: scenarioTitle,
-        role: partnerRole,
-      });
-      const ws = new WebSocket(`${protocol}//${window.location.host}/api/live?${params.toString()}`);
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${proto}//${window.location.host}/ws/live`;
+      const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        const source = inputCtx.createMediaStreamSource(mediaStream);
-        const processor = inputCtx.createScriptProcessor(4096, 1, 1);
+        ws.send(
+          JSON.stringify({
+            type: 'init',
+            scenarioTitle,
+            partnerRole,
+            hskLevel,
+          })
+        );
+
+        const source = inputCtx.createMediaStreamSource(stream);
+        const processor = inputCtx.createScriptProcessor(2048, 1, 1);
         processorRef.current = processor;
 
-        processor.onaudioprocess = (event) => {
+        processor.onaudioprocess = (e) => {
           if (mutedRef.current) return;
-          if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-          const channelData = event.inputBuffer.getChannelData(0);
-          const base64Pcm = float32ToInt16Base64(channelData);
-          wsRef.current.send(JSON.stringify({ type: 'audio', audio: base64Pcm }));
+          if (ws.readyState !== WebSocket.OPEN) return;
+          const inputData = e.inputBuffer.getChannelData(0);
+          const base64 = float32ToInt16Base64(inputData);
+          ws.send(JSON.stringify({ type: 'audio', data: base64 }));
         };
 
         source.connect(processor);
@@ -262,30 +282,35 @@ export function LiveVoicePanel({
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6 space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-100 pb-4">
+    <div className="rounded-3xl border border-[#EFE7DE] bg-white p-5 sm:p-7 space-y-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#EFE7DE] pb-5">
         <div>
-          <h3 className="text-base font-semibold text-zinc-900">
-            Hội thoại giọng nói trực tiếp · {partnerRole}
-          </h3>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Nói trực tiếp qua micro bằng tiếng Trung (HSK {hskLevel}). AI sẽ lắng nghe và đáp lại bằng giọng nói thời gian thực.
+          <div className="flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-bold text-stone-900">
+              Hội thoại giọng nói trực tiếp · {partnerRole}
+            </h3>
+            <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs font-bold border border-red-200">
+              Gemini Live API
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-stone-500 mt-1">
+            Nói trực tiếp bằng tiếng Trung (HSK {hskLevel}). AI sẽ phản xạ và trò chuyện với bạn như một người bạn bản xứ.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {status === 'active' && (
             <button
               type="button"
               onClick={toggleMute}
-              className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-medium min-h-[40px] ${
+              className={`inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all min-h-[44px] ${
                 muted
                   ? 'border-amber-300 bg-amber-50 text-amber-900'
-                  : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+                  : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
               }`}
             >
-              {muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-red-600" />}
-              <span>{muted ? 'Đang tắt micro' : 'Micro đang bật'}</span>
+              {muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-red-800" />}
+              <span>{muted ? 'Đã tắt micro' : 'Micro đang bật'}</span>
             </button>
           )}
 
@@ -293,27 +318,27 @@ export function LiveVoicePanel({
             <button
               type="button"
               onClick={() => void startLiveSession()}
-              className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 min-h-[44px] whitespace-nowrap"
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-red-800 via-red-850 to-red-900 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-red-950/20 hover:from-red-700 hover:to-red-800 min-h-[44px] whitespace-nowrap card-lift"
             >
-              <Phone className="w-4 h-4" />
+              <Phone className="w-4 h-4 text-amber-300" />
               <span>Bắt đầu gọi luyện nói</span>
             </button>
           ) : status === 'connecting' ? (
             <button
               type="button"
               disabled
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 min-h-[44px]"
+              className="inline-flex items-center gap-2 rounded-2xl bg-stone-100 px-5 py-2.5 text-sm font-bold text-stone-500 min-h-[44px]"
             >
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin text-red-800" />
               <span>Đang kết nối micro...</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={stopLiveSession}
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 min-h-[44px] whitespace-nowrap"
+              className="inline-flex items-center gap-2 rounded-2xl bg-stone-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 min-h-[44px] whitespace-nowrap shadow-sm card-lift"
             >
-              <PhoneOff className="w-4 h-4" />
+              <PhoneOff className="w-4 h-4 text-red-400" />
               <span>Kết thúc cuộc gọi</span>
             </button>
           )}
@@ -323,43 +348,68 @@ export function LiveVoicePanel({
       {errorMsg && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 text-xs sm:text-sm text-red-800"
+          className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 text-xs sm:text-sm text-red-900 shadow-xs"
         >
-          <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+          <AlertCircle className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
           <span>{errorMsg}</span>
         </div>
       )}
 
-      <div className="min-h-[260px] max-h-[400px] overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 space-y-3">
+      {/* Live Voice Status Indicator */}
+      {status === 'active' && (
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-red-50 to-amber-50/50 border border-red-200/80 animate-pop">
+          <div className="flex items-center gap-3">
+            <div className="relative flex items-center justify-center">
+              <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping absolute" />
+              <span className="w-3 h-3 rounded-full bg-emerald-600 relative" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-red-950">Đang trong cuộc gọi thoại thời gian thực</p>
+              <p className="text-[11px] text-stone-500">Hãy nói một câu tiếng Trung vào micro của bạn</p>
+            </div>
+          </div>
+          <div className="flex items-end gap-1 h-6">
+            <span className="w-1 bg-red-800 h-3 animate-[soundwave-bar_0.6s_ease-in-out_infinite]" />
+            <span className="w-1 bg-red-800 h-5 animate-[soundwave-bar_0.8s_ease-in-out_infinite_0.15s]" />
+            <span className="w-1 bg-red-800 h-4 animate-[soundwave-bar_0.5s_ease-in-out_infinite_0.3s]" />
+            <span className="w-1 bg-red-800 h-6 animate-[soundwave-bar_0.7s_ease-in-out_infinite_0.45s]" />
+          </div>
+        </div>
+      )}
+
+      {/* Transcripts Stream */}
+      <div className="min-h-[280px] max-h-[420px] overflow-y-auto rounded-2xl border border-[#EFE7DE] bg-[#FAF7F2] p-4 sm:p-5 space-y-3">
         {transcripts.length === 0 ? (
-          <div className="h-52 flex flex-col items-center justify-center text-center space-y-2 px-4">
-            <Mic className="w-7 h-7 text-zinc-400" />
-            <p className="text-sm font-medium text-zinc-700">
+          <div className="h-60 flex flex-col items-center justify-center text-center space-y-3 px-4">
+            <div className="p-2.5 rounded-2xl bg-white shadow-xs border border-stone-200/80">
+              <MascotSticker name="01_reading" size="sm" animate="float-gentle" />
+            </div>
+            <p className="text-sm font-bold text-stone-800">
               {status === 'active'
-                ? 'Cuộc gọi đã sẵn sàng — hãy bắt đầu nói tiếng Trung hoặc lắng nghe lời chào!'
-                : 'Bấm "Bắt đầu gọi luyện nói" để luyện phản xạ nghe – nói trực tiếp.'}
+                ? 'Cuộc gọi đã sẵn sàng — hãy bắt đầu nói tiếng Trung hoặc lắng nghe đối tác!'
+                : 'Bấm "Bắt đầu gọi luyện nói" để bật micro và trò chuyện trực tiếp 2 chiều.'}
             </p>
-            <p className="text-xs text-zinc-500 max-w-md">
-              Phụ đề hội thoại của bạn và AI sẽ hiển thị tại đây theo thời gian thực.
+            <p className="text-xs text-stone-500 max-w-md leading-relaxed">
+              Phụ đề hội thoại chữ Hán sẽ hiển thị trực tiếp tại đây để bạn vừa nghe vừa đối chiếu chữ.
             </p>
           </div>
         ) : (
           transcripts.map((entry) => (
             <div
               key={entry.id}
-              className={`flex ${entry.speaker === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${entry.speaker === 'user' ? 'justify-end' : 'justify-start'} animate-pop`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                className={`max-w-[85%] rounded-3xl px-5 py-3 text-sm leading-relaxed ${
                   entry.speaker === 'user'
-                    ? 'bg-red-600 text-white rounded-br-sm'
-                    : 'bg-white border border-zinc-200 text-zinc-900 rounded-bl-sm'
+                    ? 'bg-gradient-to-r from-red-800 to-red-900 text-white rounded-br-md shadow-sm'
+                    : 'bg-white border border-[#EFE7DE] text-stone-900 rounded-tl-md shadow-xs'
                 }`}
               >
-                <span className="block text-[11px] opacity-75 mb-0.5">
+                <span className="block text-[11px] font-bold opacity-75 mb-1">
                   {entry.speaker === 'user' ? 'Bạn' : partnerRole}
                 </span>
-                <p className="font-zh">{entry.text}</p>
+                <p className="font-zh text-base">{entry.text}</p>
               </div>
             </div>
           ))

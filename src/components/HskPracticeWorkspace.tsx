@@ -7,6 +7,8 @@ import {
   XCircle,
   RotateCcw,
   History,
+  Sparkles,
+  Trophy,
 } from 'lucide-react';
 import type { HskExerciseSet, HskLevel, HskSkillFocus } from '../types/learning';
 import {
@@ -17,6 +19,8 @@ import {
 } from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { ChineseBlock } from './ChineseBlock';
+import { MascotSticker } from './MascotSticker';
+import { CelebrationBurst } from './CelebrationBurst';
 
 interface HskPracticeWorkspaceProps {
   hskLevel: HskLevel;
@@ -46,6 +50,7 @@ export function HskPracticeWorkspace({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [attemptsHistory, setAttemptsHistory] = useState<SavedHskAttemptRecord[]>([]);
+  const [celebrate, setCelebrate] = useState(false);
 
   const loadAttempts = useCallback(async () => {
     if (!user) {
@@ -72,6 +77,7 @@ export function HskPracticeWorkspace({
     setLoading(true);
     setAnswers({});
     setSubmitted(false);
+    setCelebrate(false);
 
     try {
       const nextSet = await fetchHskPracticeSet({
@@ -99,6 +105,11 @@ export function HskPracticeWorkspace({
     if (!exerciseSet) return;
     const score = questions.filter((q) => answers[q.id] === q.correctAnswer).length;
     setSubmitted(true);
+
+    if (score / questions.length >= 0.8) {
+      setCelebrate(true);
+    }
+
     if (user) {
       try {
         const token = await getIdToken();
@@ -120,29 +131,48 @@ export function HskPracticeWorkspace({
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <CelebrationBurst active={celebrate} />
+
       {/* Configuration Card */}
-      <section className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6 space-y-4">
-        <div>
-          <h2 className="text-base font-semibold text-zinc-900">
-            Tạo đề luyện tập HSK {hskLevel}
-          </h2>
-          <p className="text-xs sm:text-sm text-zinc-500 mt-0.5">
-            Mỗi đề gồm 5 câu hỏi sát cấp độ HSK {hskLevel}, tự động chấm và giải thích chi tiết bằng tiếng Việt sau khi bạn nộp bài.
-          </p>
+      <section className="rounded-3xl border border-[#EFE7DE] bg-white p-5 sm:p-7 space-y-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFE7DE] pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-1 rounded-xl bg-gradient-to-br from-red-800 to-amber-900 shadow-sm shrink-0">
+              <div className="w-10 h-10 rounded-[10px] bg-white flex items-center justify-center overflow-hidden">
+                <MascotSticker name="09_determined" size="sm" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold text-stone-900">
+                  Luyện đề trắc nghiệm HSK {hskLevel}
+                </h2>
+                <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs font-bold border border-red-200">
+                  Đề 5 câu
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
+                Đề thi bám sát cấu trúc mới, tự động chấm và giải thích cặn kẽ bằng tiếng Việt.
+              </p>
+            </div>
+          </div>
         </div>
 
+        {/* Skill focus switcher */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-zinc-500 mr-1">Dạng bài:</span>
-          <div className="flex flex-wrap items-center gap-1 p-1 rounded-lg bg-zinc-100">
+          <span className="text-xs font-bold text-stone-500 uppercase tracking-wide mr-1">
+            Dạng bài:
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-[#FAF7F2] border border-[#EFE7DE]">
             {SKILL_FOCUS_OPTIONS.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
                 onClick={() => setSkillFocus(opt.id)}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap card-lift ${
                   skillFocus === opt.id
-                    ? 'bg-white text-zinc-900 shadow-sm'
-                    : 'text-zinc-600 hover:text-zinc-900'
+                    ? 'bg-gradient-to-r from-red-800 to-red-900 text-white shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
                 {opt.labelVi}
@@ -162,21 +192,24 @@ export function HskPracticeWorkspace({
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value.slice(0, 120))}
-            placeholder="Chủ điểm ưu tiên (không bắt buộc, vd: Lượng từ, Câu chữ 把, Giao tiếp...)"
-            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-red-600 focus:outline-none min-h-[44px]"
+            placeholder="Chủ điểm ngữ pháp ưu tiên (không bắt buộc, vd: Câu chữ 把, Bổ ngữ kết quả...)"
+            className="flex-1 rounded-2xl border border-[#EFE7DE] bg-[#FAF7F2] px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:bg-white focus:border-red-800 focus:outline-none focus:ring-1 focus:ring-red-800 min-h-[46px] shadow-xs transition-all"
           />
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:bg-zinc-200 disabled:text-zinc-500 transition-colors whitespace-nowrap shrink-0 min-h-[44px]"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-800 via-red-850 to-red-900 px-6 py-3 text-sm font-bold text-white shadow-md shadow-red-950/20 hover:from-red-700 hover:to-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap shrink-0 min-h-[46px] card-lift"
           >
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Đang tạo đề...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+                <span>Đang soạn đề...</span>
               </>
             ) : (
-              <span>Tạo đề mới</span>
+              <>
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>Tạo đề mới</span>
+              </>
             )}
           </button>
         </form>
@@ -184,9 +217,9 @@ export function HskPracticeWorkspace({
         {errorMsg && (
           <div
             role="alert"
-            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 text-sm text-red-800"
+            className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 text-sm text-red-900 shadow-xs"
           >
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -194,59 +227,91 @@ export function HskPracticeWorkspace({
 
       {/* Exercise Body */}
       {loading ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-10 flex flex-col items-center justify-center text-center space-y-3">
-          <Loader2 className="w-7 h-7 animate-spin text-red-600" />
-          <p className="text-sm font-medium text-zinc-900">
-            Đang biên soạn 5 câu hỏi HSK {hskLevel}...
-          </p>
+        <div className="rounded-3xl border border-[#EFE7DE] bg-white p-10 sm:p-14 flex flex-col items-center justify-center text-center space-y-4 shadow-sm animate-pop">
+          <div className="p-3 rounded-2xl bg-gradient-to-br from-red-800 to-amber-900 shadow-md">
+            <MascotSticker name="09_determined" size="md" animate="wiggle" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-base font-bold text-stone-900">
+              Đang biên tập 5 câu hỏi sát chuẩn HSK {hskLevel}...
+            </p>
+            <p className="text-xs sm:text-sm text-stone-500 max-w-sm">
+              Đề thi được tính toán theo độ khó từ vựng và ngữ pháp để bạn làm quen dạng bài thi thật.
+            </p>
+          </div>
         </div>
       ) : !exerciseSet ? (
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-8 sm:p-10 text-center space-y-3">
-          <GraduationCap className="w-8 h-8 text-red-600 mx-auto" />
-          <h3 className="text-base font-semibold text-zinc-900">
-            Sẵn sàng luyện thi HSK {hskLevel}
-          </h3>
-          <p className="text-sm text-zinc-600 max-w-md mx-auto leading-relaxed">
-            Bấm "Tạo đề mới" để bắt đầu bộ 5 câu hỏi trắc nghiệm. Điểm số chỉ được tính sau khi bạn hoàn thành và nộp bài.
-          </p>
+        <div className="rounded-3xl border border-[#EFE7DE] bg-gradient-to-br from-white to-[#FCFAF7] p-8 sm:p-12 text-center space-y-4 shadow-sm">
+          <div className="p-2 rounded-2xl bg-red-50 w-24 h-24 mx-auto flex items-center justify-center border border-red-200/60">
+            <MascotSticker name="09_determined" size="lg" animate="float-gentle" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h3 className="text-base sm:text-lg font-bold text-stone-900">
+              Sẵn sàng rèn luyện bài thi HSK {hskLevel}
+            </h3>
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+              Bấm <strong className="text-red-900">"Tạo đề mới"</strong> để thử sức với bộ 5 câu hỏi trắc nghiệm. Bạn có thể luyện không giới hạn số lượng đề hoàn toàn miễn phí.
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-5 animate-pop">
           {/* Quiz Header & Real Result Summary */}
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="rounded-3xl border border-[#EFE7DE] bg-white p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
             <div>
-              <p className="text-xs text-zinc-500">
-                HSK {exerciseSet.level} · {questions.length} câu hỏi
-              </p>
-              <h3 className="text-base font-semibold text-zinc-900 mt-0.5">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs font-bold">
+                  HSK {exerciseSet.level}
+                </span>
+                <span className="text-xs text-stone-500 font-semibold">
+                  {questions.length} câu hỏi
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-stone-900 mt-1">
                 {exerciseSet.titleVi}
               </h3>
             </div>
 
             {submitted ? (
               <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-xs text-zinc-500">Kết quả thực tế</p>
-                  <p className="text-xl font-bold font-mono tabular-nums text-zinc-900">
-                    {correctCount} / {questions.length} câu đúng
-                  </p>
+                <div className="flex items-center gap-3 bg-[#FAF7F2] p-2.5 rounded-2xl border border-[#EFE7DE]">
+                  <MascotSticker
+                    name={correctCount >= 4 ? '11_perfect_100' : '02_cheer'}
+                    size="sm"
+                    animate="float-gentle"
+                  />
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-semibold text-stone-500">Kết quả</p>
+                      {correctCount >= 4 && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold">
+                          Xuất sắc!
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xl font-extrabold font-mono tabular-nums text-red-900">
+                      {correctCount} / {questions.length} câu đúng
+                    </p>
+                  </div>
                 </div>
+
                 <button
                   type="button"
                   onClick={() => {
                     setAnswers({});
                     setSubmitted(false);
+                    setCelebrate(false);
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 min-h-[40px]"
+                  className="inline-flex items-center gap-1.5 rounded-2xl border border-stone-200 bg-white px-4 py-2.5 text-xs font-bold text-stone-700 hover:border-red-300 hover:text-red-900 min-h-[42px] transition-colors shadow-xs"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Làm lại</span>
+                  <RotateCcw className="w-3.5 h-3.5 text-red-800" />
+                  <span>Làm lại đề này</span>
                 </button>
               </div>
             ) : (
-              <p className="text-xs text-zinc-500 font-mono tabular-nums">
-                Đã chọn {answeredCount}/{questions.length} câu
-              </p>
+              <div className="text-xs font-bold text-stone-500 font-mono tabular-nums bg-[#FAF7F2] px-3 py-1.5 rounded-xl border border-[#EFE7DE]">
+                Đã chọn <span className="text-red-900">{answeredCount}</span> / {questions.length} câu
+              </div>
             )}
           </div>
 
@@ -259,10 +324,15 @@ export function HskPracticeWorkspace({
               return (
                 <article
                   key={q.id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6 space-y-4"
+                  className="rounded-3xl border border-[#EFE7DE] bg-white p-5 sm:p-7 space-y-4 shadow-sm"
                 >
-                  <div className="text-xs font-medium text-zinc-500">
-                    Câu {idx + 1} · {q.instructionVi}
+                  <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
+                    <span className="text-xs font-bold text-red-900 uppercase tracking-wide">
+                      Câu hỏi {idx + 1}
+                    </span>
+                    <span className="text-xs text-stone-500 font-medium">
+                      {q.instructionVi}
+                    </span>
                   </div>
 
                   <ChineseBlock
@@ -270,9 +340,10 @@ export function HskPracticeWorkspace({
                     pinyin={q.promptPinyin}
                     showPinyin={showPinyin}
                     allowLocalPeek
+                    large
                   />
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                     {q.options.map((opt, optIdx) => {
                       const letter = String.fromCharCode(65 + optIdx);
                       const isSelected = chosen === opt;
@@ -287,20 +358,30 @@ export function HskPracticeWorkspace({
                           onClick={() =>
                             setAnswers((prev) => ({ ...prev, [q.id]: opt }))
                           }
-                          className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-colors min-h-[44px] ${
+                          className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition-all min-h-[48px] card-lift ${
                             showRight
-                              ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-medium'
+                              ? 'border-emerald-500 bg-emerald-50 text-emerald-950 font-bold shadow-xs'
                               : showWrong
-                                ? 'border-red-400 bg-red-50 text-red-900'
+                                ? 'border-red-400 bg-red-50 text-red-950'
                                 : isSelected
-                                  ? 'border-red-600 bg-red-50/40 text-zinc-900 font-medium'
-                                  : 'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50'
+                                  ? 'border-red-800 bg-red-50/70 text-red-950 font-bold ring-2 ring-red-800/20 shadow-xs'
+                                  : 'border-[#EFE7DE] bg-[#FAF7F2] text-stone-800 hover:border-red-300 hover:bg-white'
                           }`}
                         >
-                          <span className="font-mono text-xs font-semibold text-zinc-500 shrink-0">
-                            {letter}.
+                          <span
+                            className={`flex items-center justify-center w-6 h-6 rounded-lg text-xs font-mono font-bold shrink-0 ${
+                              showRight
+                                ? 'bg-emerald-600 text-white'
+                                : showWrong
+                                  ? 'bg-red-600 text-white'
+                                  : isSelected
+                                    ? 'bg-red-800 text-white'
+                                    : 'bg-white text-stone-500 border border-stone-200'
+                            }`}
+                          >
+                            {letter}
                           </span>
-                          <span className="font-zh break-words">{opt}</span>
+                          <span className="font-zh font-medium break-words">{opt}</span>
                         </button>
                       );
                     })}
@@ -308,28 +389,28 @@ export function HskPracticeWorkspace({
 
                   {submitted && (
                     <div
-                      className={`rounded-xl border px-4 py-3 text-xs sm:text-sm leading-relaxed space-y-1.5 ${
+                      className={`rounded-2xl border px-4 py-3.5 text-xs sm:text-sm leading-relaxed space-y-1.5 animate-pop ${
                         isCorrect
-                          ? 'border-emerald-200 bg-emerald-50/70 text-emerald-900'
-                          : 'border-red-200 bg-red-50/70 text-red-900'
+                          ? 'border-emerald-200 bg-emerald-50/70 text-emerald-950'
+                          : 'border-red-200 bg-red-50/70 text-red-950'
                       }`}
                     >
-                      <div className="flex items-center gap-2 font-semibold">
+                      <div className="flex items-center gap-2 font-bold">
                         {isCorrect ? (
                           <>
                             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                            <span>Chính xác</span>
+                            <span>Chính xác! Rất giỏi!</span>
                           </>
                         ) : (
                           <>
                             <XCircle className="w-4 h-4 text-red-600 shrink-0" />
                             <span>
-                              Chưa đúng · Đáp án đúng: <span className="font-zh">{q.correctAnswer}</span>
+                              Chưa đúng · Đáp án chính xác là: <span className="font-zh font-bold underline">{q.correctAnswer}</span>
                             </span>
                           </>
                         )}
                       </div>
-                      <p className="text-zinc-700">{q.explanationVi}</p>
+                      <p className="text-stone-700 font-medium pl-6">{q.explanationVi}</p>
                     </div>
                   )}
                 </article>
@@ -338,16 +419,19 @@ export function HskPracticeWorkspace({
           </div>
 
           {!submitted && (
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-end pt-2">
               <button
                 type="button"
                 disabled={answeredCount < questions.length}
                 onClick={() => void handleSubmitQuiz()}
-                className="rounded-xl bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:bg-zinc-200 disabled:text-zinc-500 transition-colors min-h-[44px]"
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-red-800 via-red-850 to-red-900 px-7 py-3.5 text-sm font-bold text-white shadow-md shadow-red-950/20 hover:from-red-700 hover:to-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[48px] card-lift"
               >
-                {answeredCount < questions.length
-                  ? `Chọn đủ ${questions.length} câu để nộp bài`
-                  : 'Nộp bài & Xem giải thích'}
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>
+                  {answeredCount < questions.length
+                    ? `Chọn đủ ${questions.length} câu để nộp bài (${answeredCount}/${questions.length})`
+                    : 'Nộp bài & Xem giải thích chi tiết'}
+                </span>
               </button>
             </div>
           )}
@@ -355,22 +439,22 @@ export function HskPracticeWorkspace({
       )}
 
       {user && attemptsHistory.length > 0 && (
-        <section className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
-            <History className="w-4 h-4 text-red-600" />
-            <span>Lịch sử luyện thi HSK đã lưu</span>
+        <section className="rounded-3xl border border-[#EFE7DE] bg-white p-5 sm:p-6 space-y-3 shadow-sm">
+          <div className="flex items-center gap-2 text-sm font-bold text-stone-900 border-b border-[#EFE7DE] pb-3">
+            <History className="w-4 h-4 text-red-800" />
+            <span>Lịch sử luyện thi HSK của bạn</span>
           </div>
-          <div className="divide-y divide-zinc-100">
+          <div className="divide-y divide-[#EFE7DE]">
             {attemptsHistory.map((item) => (
               <div
                 key={item.id}
-                className="py-2.5 flex items-center justify-between gap-3 text-xs sm:text-sm"
+                className="py-3 flex items-center justify-between gap-3 text-xs sm:text-sm"
               >
                 <div className="min-w-0">
-                  <p className="font-medium text-zinc-800 truncate">{item.titleVi}</p>
-                  <p className="text-xs text-zinc-500">HSK {item.hskLevel}</p>
+                  <p className="font-bold text-stone-800 truncate">{item.titleVi}</p>
+                  <p className="text-xs text-stone-500">HSK {item.hskLevel}</p>
                 </div>
-                <span className="font-mono tabular-nums font-semibold text-red-700 shrink-0">
+                <span className="font-mono tabular-nums font-bold text-red-900 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full shrink-0">
                   {item.correctCount}/{item.totalCount} câu đúng
                 </span>
               </div>

@@ -10,6 +10,7 @@ import {
   List,
   Bookmark,
   BookmarkCheck,
+  Sparkles,
 } from 'lucide-react';
 import type { HskLevel, VocabularyItem } from '../types/learning';
 import { fetchVocabularySet } from '../services/apiClient';
@@ -19,6 +20,7 @@ import {
 } from '../services/firestoreSync';
 import { useAuth } from '../contexts/AuthContext';
 import { ChineseBlock, SpeakButton } from './ChineseBlock';
+import { MascotSticker } from './MascotSticker';
 
 interface VocabularyWorkspaceProps {
   hskLevel: HskLevel;
@@ -31,10 +33,10 @@ interface VocabularyWorkspaceProps {
 const PRESET_TOPICS = [
   'Giao tiếp hằng ngày',
   'Ẩm thực & Nhà hàng',
-  'Du lịch & Giao thông',
-  'Học tập & Công việc',
-  'Mua sắm & Thanh toán',
-  'Gia đình & Thời gian rảnh',
+  'Du lịch & Đi lại',
+  'Công sở & Phỏng vấn',
+  'Mua sắm & Mặc cả',
+  'Cảm xúc & Tính cách',
 ];
 
 export function VocabularyWorkspace({
@@ -103,28 +105,34 @@ export function VocabularyWorkspace({
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Control Panel */}
-      <section className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <section className="rounded-3xl border border-[#EFE7DE] bg-white p-5 sm:p-7 space-y-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFE7DE] pb-4">
           <div>
-            <h2 className="text-base font-semibold text-zinc-900">
-              Tạo bộ từ vựng theo chủ đề · HSK {hskLevel}
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-500 mt-0.5">
-              Chọn chủ đề có sẵn hoặc nhập chủ đề bạn muốn luyện (tối đa 120 ký tự).
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold text-stone-900">
+                Bộ từ vựng ngữ cảnh theo chủ đề
+              </h2>
+              <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs font-bold border border-red-200">
+                HSK {hskLevel}
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
+              Từ vựng chuẩn khung HSK, kèm câu ví dụ thực tế và phát âm chuẩn bản xứ.
             </p>
           </div>
 
-          <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-100">
+          {/* View Mode Switcher */}
+          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[#FAF7F2] border border-[#EFE7DE]">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
                 viewMode === 'grid'
-                  ? 'bg-white text-zinc-900 shadow-sm'
-                  : 'text-zinc-600 hover:text-zinc-900'
+                  ? 'bg-white text-stone-900 shadow-sm border border-stone-200/80'
+                  : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <List className="w-3.5 h-3.5" />
+              <List className="w-3.5 h-3.5 text-red-800" />
               <span>Danh sách</span>
             </button>
             <button
@@ -134,23 +142,23 @@ export function VocabularyWorkspace({
                 setViewMode('flashcard');
                 setFlipped(false);
               }}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap disabled:opacity-40 ${
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap disabled:opacity-40 ${
                 viewMode === 'flashcard'
-                  ? 'bg-white text-zinc-900 shadow-sm'
-                  : 'text-zinc-600 hover:text-zinc-900'
+                  ? 'bg-white text-stone-900 shadow-sm border border-stone-200/80'
+                  : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Thẻ ghi nhớ</span>
+              <Layers className="w-3.5 h-3.5 text-red-800" />
+              <span>Flashcard 3D</span>
             </button>
             {user && (
               <button
                 type="button"
                 onClick={() => setViewMode('saved')}
-                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
                   viewMode === 'saved'
-                    ? 'bg-white text-red-700 shadow-sm'
-                    : 'text-zinc-600 hover:text-zinc-900'
+                    ? 'bg-gradient-to-r from-red-800 to-red-900 text-white shadow-sm'
+                    : 'text-stone-600 hover:text-red-900'
                 }`}
               >
                 <BookmarkCheck className="w-3.5 h-3.5" />
@@ -160,16 +168,17 @@ export function VocabularyWorkspace({
           </div>
         </div>
 
+        {/* Preset topic pills */}
         <div className="flex flex-wrap gap-2">
           {PRESET_TOPICS.map((preset) => (
             <button
               key={preset}
               type="button"
               onClick={() => setTopic(preset)}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+              className={`rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition-all whitespace-nowrap card-lift ${
                 topic === preset
-                  ? 'border-red-300 bg-red-50 text-red-700'
-                  : 'border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
+                  ? 'border-red-800 bg-red-800 text-white shadow-xs'
+                  : 'border-[#EFE7DE] bg-[#FAF7F2] text-stone-700 hover:border-red-300 hover:bg-white'
               }`}
             >
               {preset}
@@ -188,21 +197,24 @@ export function VocabularyWorkspace({
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value.slice(0, 120))}
-            placeholder="Nhập chủ đề từ vựng (ví dụ: Công nghệ, Đặt phòng khách sạn...)"
-            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-red-600 focus:outline-none min-h-[44px]"
+            placeholder="Hoặc nhập chủ đề bạn muốn học (ví dụ: Sân bay, Đặt phòng khách sạn...)"
+            className="flex-1 rounded-2xl border border-[#EFE7DE] bg-[#FAF7F2] px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:bg-white focus:border-red-800 focus:outline-none focus:ring-1 focus:ring-red-800 min-h-[46px] transition-all shadow-xs"
           />
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:bg-zinc-200 disabled:text-zinc-500 transition-colors whitespace-nowrap shrink-0 min-h-[44px]"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-800 via-red-850 to-red-900 px-6 py-3 text-sm font-bold text-white shadow-md shadow-red-950/20 hover:from-red-700 hover:to-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap shrink-0 min-h-[46px] card-lift"
           >
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Đang tạo 8 từ vựng...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+                <span>Đang tạo bộ từ vựng...</span>
               </>
             ) : (
-              <span>Tạo bộ từ vựng</span>
+              <>
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>Tạo 8 từ vựng</span>
+              </>
             )}
           </button>
         </form>
@@ -210,9 +222,9 @@ export function VocabularyWorkspace({
         {errorMsg && (
           <div
             role="alert"
-            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 text-sm text-red-800"
+            className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 text-sm text-red-900 shadow-xs"
           >
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -220,21 +232,32 @@ export function VocabularyWorkspace({
 
       {/* Content Area */}
       {loading ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-10 flex flex-col items-center justify-center text-center space-y-3">
-          <Loader2 className="w-7 h-7 animate-spin text-red-600" />
-          <p className="text-sm font-medium text-zinc-900">
-            Đang tổng hợp từ vựng HSK {hskLevel} chủ đề "{topic}"...
-          </p>
+        <div className="rounded-3xl border border-[#EFE7DE] bg-white p-10 sm:p-14 flex flex-col items-center justify-center text-center space-y-4 shadow-sm animate-pop">
+          <div className="p-3 rounded-2xl bg-gradient-to-br from-red-800 to-amber-900 shadow-md">
+            <MascotSticker name="01_reading" size="md" animate="float-gentle" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-base font-bold text-stone-900">
+              Đang tổng hợp bộ từ vựng HSK {hskLevel} cho bạn...
+            </p>
+            <p className="text-xs sm:text-sm text-stone-500 max-w-sm">
+              Chủ đề "{topic}" đang được trích xuất nghĩa, ví dụ câu và phiên âm chuẩn.
+            </p>
+          </div>
         </div>
       ) : viewMode === 'flashcard' && currentFlashcard ? (
-        <div className="max-w-xl mx-auto space-y-4">
-          <div className="flex items-center justify-between text-xs text-zinc-500">
+        <div className="max-w-xl mx-auto space-y-5 animate-pop">
+          <div className="flex items-center justify-between text-xs text-stone-500 font-medium px-2">
             <span>
-              Thẻ <span className="font-mono tabular-nums font-medium text-zinc-900">{flashIndex + 1}</span> / {items.length}
+              Thẻ từ vựng <span className="font-mono tabular-nums font-bold text-red-900">{flashIndex + 1}</span> / {items.length}
             </span>
-            <span>Bấm vào thẻ để lật xem nghĩa và ví dụ</span>
+            <span className="flex items-center gap-1 text-red-800 font-semibold">
+              <RotateCw className="w-3.5 h-3.5" />
+              <span>Chạm thẻ để lật</span>
+            </span>
           </div>
 
+          {/* Flashcard container */}
           <div
             role="button"
             tabIndex={0}
@@ -245,35 +268,54 @@ export function VocabularyWorkspace({
                 setFlipped((prev) => !prev);
               }
             }}
-            className="rounded-2xl border border-zinc-200 bg-white p-8 min-h-[260px] flex flex-col items-center justify-center text-center space-y-4 cursor-pointer hover:border-red-300 transition-colors"
+            className={`rounded-3xl border-2 p-8 min-h-[300px] flex flex-col items-center justify-center text-center space-y-4 cursor-pointer transition-all duration-300 shadow-md ${
+              flipped
+                ? 'border-red-800 bg-gradient-to-b from-[#FFFDF9] to-red-50/40 ring-2 ring-red-800/10'
+                : 'border-[#EFE7DE] bg-white hover:border-red-300 hover:shadow-lg'
+            }`}
           >
-            <span className="text-xs text-zinc-500">
-              HSK {currentFlashcard.hskLevel} · {currentFlashcard.partOfSpeechVi}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-red-100/80 text-red-800 text-xs font-bold border border-red-200">
+                HSK {currentFlashcard.hskLevel}
+              </span>
+              <span className="text-xs text-stone-500 font-semibold">
+                {currentFlashcard.partOfSpeechVi}
+              </span>
+            </div>
 
-            <p className="font-zh text-4xl sm:text-5xl font-semibold text-zinc-900">
+            <p className="font-zh text-5xl sm:text-6xl font-bold text-stone-900 tracking-wide select-none drop-shadow-xs">
               {currentFlashcard.hanzi}
             </p>
 
             {(showPinyin || flipped) && (
-              <p className="text-base text-zinc-500">{currentFlashcard.pinyin}</p>
+              <p className="text-lg text-red-900 font-mono font-medium tracking-wide">
+                {currentFlashcard.pinyin}
+              </p>
             )}
 
             {flipped ? (
-              <div className="border-t border-zinc-100 pt-4 space-y-2 w-full max-w-md">
-                <p className="text-base font-semibold text-red-700">
+              <div className="border-t border-[#EFE7DE] pt-4 space-y-2 w-full max-w-md animate-pop">
+                <p className="text-lg font-bold text-red-900">
                   {currentFlashcard.meaningVi}
                 </p>
-                <p className="font-zh text-sm text-zinc-800">
-                  {currentFlashcard.exampleHanzi}
-                </p>
-                <p className="text-xs text-zinc-500">{currentFlashcard.exampleVi}</p>
+                <div className="bg-[#FAF7F2] p-3 rounded-2xl border border-[#EFE7DE]">
+                  <p className="font-zh text-base font-medium text-stone-800">
+                    {currentFlashcard.exampleHanzi}
+                  </p>
+                  <p className="text-xs sm:text-sm text-stone-600 mt-1">
+                    {currentFlashcard.exampleVi}
+                  </p>
+                </div>
               </div>
             ) : (
-              <p className="text-xs text-zinc-400 pt-2">Chạm để lật thẻ</p>
+              <div className="pt-2 flex items-center gap-1.5 text-xs text-stone-400 font-medium">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Chạm để xem nghĩa tiếng Việt & câu ví dụ</span>
+              </div>
             )}
           </div>
 
+          {/* Flashcard Navigation */}
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
@@ -281,21 +323,21 @@ export function VocabularyWorkspace({
                 setFlipped(false);
                 setFlashIndex((prev) => (prev - 1 + items.length) % items.length);
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 min-h-[44px]"
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 hover:bg-stone-50 min-h-[46px] shadow-xs card-lift"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 text-red-800" />
               <span>Thẻ trước</span>
             </button>
 
             <div className="flex items-center gap-2">
-              <SpeakButton text={currentFlashcard.hanzi} size="md" label="Nghe từ này" />
+              <SpeakButton text={currentFlashcard.hanzi} size="md" label="Nghe phát âm" />
               <button
                 type="button"
                 onClick={() => setFlipped((prev) => !prev)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 min-h-[40px]"
+                className="inline-flex items-center gap-1.5 rounded-2xl border border-red-200 bg-red-50/70 px-4 py-2.5 text-xs font-bold text-red-900 hover:bg-red-100 min-h-[44px] transition-colors"
               >
                 <RotateCw className="w-3.5 h-3.5" />
-                <span>Lật thẻ</span>
+                <span>Lật mặt</span>
               </button>
             </div>
 
@@ -305,26 +347,34 @@ export function VocabularyWorkspace({
                 setFlipped(false);
                 setFlashIndex((prev) => (prev + 1) % items.length);
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 min-h-[44px]"
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 hover:bg-stone-50 min-h-[46px] shadow-xs card-lift"
             >
               <span>Thẻ tiếp</span>
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 text-red-800" />
             </button>
           </div>
         </div>
       ) : activeList.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-8 sm:p-10 text-center space-y-3">
-          <BookOpen className="w-8 h-8 text-red-600 mx-auto" />
-          <h3 className="text-base font-semibold text-zinc-900">
-            {viewMode === 'saved'
-              ? 'Sổ từ vựng đã lưu đang trống'
-              : 'Chưa có bộ từ vựng nào trong phiên học này'}
-          </h3>
-          <p className="text-sm text-zinc-600 max-w-md mx-auto leading-relaxed">
-            {viewMode === 'saved'
-              ? 'Hãy bấm biểu tượng Lưu trên các thẻ từ vựng để lưu vào tài khoản Firestore của bạn.'
-              : 'Chọn một chủ đề phía trên và bấm "Tạo bộ từ vựng" để nhận 8 từ kèm Pinyin, nghĩa tiếng Việt, câu ví dụ thực tế và phát âm chuẩn.'}
-          </p>
+        <div className="rounded-3xl border border-[#EFE7DE] bg-gradient-to-br from-white to-[#FCFAF7] p-8 sm:p-12 text-center space-y-4 shadow-sm">
+          <div className="p-2 rounded-2xl bg-red-50 w-24 h-24 mx-auto flex items-center justify-center border border-red-200/60">
+            <MascotSticker
+              name={viewMode === 'saved' ? '07_love' : '04_curious'}
+              size="lg"
+              animate="float-gentle"
+            />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h3 className="text-base sm:text-lg font-bold text-stone-900">
+              {viewMode === 'saved'
+                ? 'Sổ từ vựng yêu thích đang chờ bạn'
+                : 'Chưa có bộ từ vựng nào trong phiên học này'}
+            </h3>
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+              {viewMode === 'saved'
+                ? 'Hãy bấm biểu tượng Lưu trên các thẻ từ vựng để lưu vào tài khoản và ôn tập Flashcard bất cứ lúc nào.'
+                : 'Hãy chọn một chủ đề phía trên và bấm "Tạo 8 từ vựng" để nhận danh sách từ mới kèm phát âm bản xứ nhé!'}
+            </p>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -333,27 +383,29 @@ export function VocabularyWorkspace({
             return (
               <article
                 key={item.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 flex flex-col justify-between gap-4"
+                className="rounded-3xl border border-[#EFE7DE] bg-white p-5 sm:p-6 flex flex-col justify-between gap-4 shadow-sm card-lift group"
               >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-xs text-zinc-500">
-                      <span>HSK {item.hskLevel}</span>
-                      <span aria-hidden="true" className="mx-2">·</span>
-                      <span>{item.partOfSpeechVi}</span>
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between gap-2 border-b border-stone-100 pb-3">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-bold border border-red-200/60">
+                        HSK {item.hskLevel}
+                      </span>
+                      <span className="text-stone-400">·</span>
+                      <span className="text-stone-500 font-semibold">{item.partOfSpeechVi}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => void handleToggleBookmark(item)}
-                      className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap ${
+                      className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1 text-xs font-bold transition-all whitespace-nowrap ${
                         bookmarked
-                          ? 'border-red-200 bg-red-50 text-red-700'
-                          : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
+                          ? 'border-red-300 bg-red-50 text-red-900 shadow-xs'
+                          : 'border-stone-200 bg-[#FAF7F2] text-stone-600 hover:border-red-300 hover:bg-white hover:text-red-900'
                       }`}
                     >
                       {bookmarked ? (
                         <>
-                          <BookmarkCheck className="w-3.5 h-3.5" />
+                          <BookmarkCheck className="w-3.5 h-3.5 text-red-800" />
                           <span>Đã lưu</span>
                         </>
                       ) : (
@@ -375,8 +427,10 @@ export function VocabularyWorkspace({
                   />
                 </div>
 
-                <div className="border-t border-zinc-100 pt-3.5 space-y-2.5">
-                  <p className="text-xs font-medium text-zinc-500">Ví dụ ngữ cảnh</p>
+                <div className="border-t border-[#EFE7DE] pt-3.5 space-y-2.5">
+                  <p className="text-xs font-bold text-stone-500 uppercase tracking-wide">
+                    Ví dụ ngữ cảnh thực tế
+                  </p>
                   <ChineseBlock
                     hanzi={item.exampleHanzi}
                     pinyin={item.examplePinyin}
@@ -385,8 +439,8 @@ export function VocabularyWorkspace({
                     allowLocalPeek
                   />
                   {item.usageNoteVi && (
-                    <p className="text-xs text-zinc-600 bg-zinc-50 rounded-lg px-3 py-2 leading-relaxed">
-                      Ghi chú: {item.usageNoteVi}
+                    <p className="text-xs text-stone-700 bg-[#FAF7F2] rounded-xl px-3 py-2 leading-relaxed border border-[#EFE7DE]">
+                      <strong className="text-red-900 font-semibold">Ghi chú:</strong> {item.usageNoteVi}
                     </p>
                   )}
                 </div>
