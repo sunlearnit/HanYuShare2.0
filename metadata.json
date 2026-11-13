@@ -1,0 +1,6 @@
+{
+  "name": "HanYu Share",
+  "description": "Ứng dụng học tiếng Trung cho người Việt với gia sư AI, chấm bài viết chi tiết, luyện từ vựng, ôn thi HSK và thực hành hội thoại.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

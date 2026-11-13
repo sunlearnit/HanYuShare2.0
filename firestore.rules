@@ -1,0 +1,141 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isVerifiedUser() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isValidHskLevel(level) {
+      return level is int && level >= 1 && level <= 6;
+    }
+
+    function isValidUserPreferences(data, userId) {
+      return data.keys().hasAll(['uid', 'preferredHskLevel', 'showPinyin', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'preferredHskLevel', 'showPinyin', 'updatedAt'])
+        && data.uid is string
+        && data.uid.size() <= 128
+        && data.uid == userId
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 120))
+        && isValidHskLevel(data.preferredHskLevel)
+        && data.showPinyin is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidChatMessage(data, userId) {
+      return data.keys().hasAll(['ownerUid', 'role', 'textVi', 'chineseSegments', 'createdAt'])
+        && data.keys().hasOnly(['ownerUid', 'role', 'textVi', 'chineseSegments', 'createdAt'])
+        && data.ownerUid is string
+        && data.ownerUid.size() <= 128
+        && data.ownerUid == userId
+        && data.role is string
+        && data.role in ['user', 'assistant']
+        && data.textVi is string
+        && data.textVi.size() >= 1
+        && data.textVi.size() <= 4000
+        && data.chineseSegments is list
+        && data.chineseSegments.size() <= 10
+        && (data.chineseSegments.size() == 0 || data.chineseSegments[0] is map)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidSavedVocab(data, userId) {
+      return data.keys().hasAll([
+          'ownerUid',
+          'hanzi',
+          'pinyin',
+          'partOfSpeechVi',
+          'meaningVi',
+          'exampleHanzi',
+          'examplePinyin',
+          'exampleVi',
+          'usageNoteVi',
+          'hskLevel',
+          'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid',
+          'hanzi',
+          'pinyin',
+          'partOfSpeechVi',
+          'meaningVi',
+          'exampleHanzi',
+          'examplePinyin',
+          'exampleVi',
+          'usageNoteVi',
+          'hskLevel',
+          'createdAt'
+        ])
+        && data.ownerUid is string
+        && data.ownerUid.size() <= 128
+        && data.ownerUid == userId
+        && data.hanzi is string && data.hanzi.size() >= 1 && data.hanzi.size() <= 80
+        && data.pinyin is string && data.pinyin.size() >= 1 && data.pinyin.size() <= 160
+        && data.partOfSpeechVi is string && data.partOfSpeechVi.size() >= 1 && data.partOfSpeechVi.size() <= 60
+        && data.meaningVi is string && data.meaningVi.size() >= 1 && data.meaningVi.size() <= 240
+        && data.exampleHanzi is string && data.exampleHanzi.size() >= 1 && data.exampleHanzi.size() <= 240
+        && data.examplePinyin is string && data.examplePinyin.size() >= 1 && data.examplePinyin.size() <= 400
+        && data.exampleVi is string && data.exampleVi.size() >= 1 && data.exampleVi.size() <= 400
+        && data.usageNoteVi is string && data.usageNoteVi.size() <= 400
+        && isValidHskLevel(data.hskLevel)
+        && data.createdAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserPreferences(incoming(), userId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserPreferences(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'preferredHskLevel', 'showPinyin', 'updatedAt']);
+      allow delete: if isValidId(userId) && isOwner(userId);
+
+      match /chatMessages/{messageId} {
+        allow get: if isValidId(userId) && isValidId(messageId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.ownerUid == request.auth.uid;
+        allow create: if isValidId(userId)
+          && isValidId(messageId)
+          && isOwner(userId)
+          && isValidChatMessage(incoming(), userId)
+          && incoming().createdAt == request.time;
+        allow delete: if isValidId(userId) && isValidId(messageId) && isOwner(userId);
+      }
+
+      match /savedVocab/{vocabId} {
+        allow get: if isValidId(userId) && isValidId(vocabId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.ownerUid == request.auth.uid;
+        allow create: if isValidId(userId)
+          && isValidId(vocabId)
+          && isOwner(userId)
+          && isValidSavedVocab(incoming(), userId)
+          && incoming().createdAt == request.time;
+        allow delete: if isValidId(userId) && isValidId(vocabId) && isOwner(userId);
+      }
+    }
+  }
+}

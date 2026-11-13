@@ -1,0 +1,153 @@
+{
+  "entities": {
+    "UserPreferences": {
+      "title": "UserPreferences",
+      "description": "Learner preferences synced across sessions for a signed-in Google user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Firebase Auth UID matching document ID."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 120,
+          "description": "Learner display name."
+        },
+        "preferredHskLevel": {
+          "type": "integer",
+          "description": "HSK level 1 through 6."
+        },
+        "showPinyin": {
+          "type": "boolean",
+          "description": "Whether Pinyin is displayed by default."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": ["uid", "preferredHskLevel", "showPinyin", "updatedAt"]
+    },
+    "ChatMessageDoc": {
+      "title": "ChatMessageDoc",
+      "description": "Saved message inside the learner's AI tutor thread.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "assistant"]
+        },
+        "textVi": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "chineseSegments": {
+          "type": "array",
+          "description": "Up to 10 Chinese + Pinyin + Vietnamese example segments."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerUid", "role", "textVi", "chineseSegments", "createdAt"]
+    },
+    "SavedVocabDoc": {
+      "title": "SavedVocabDoc",
+      "description": "Bookmarked Mandarin vocabulary card for review.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "hanzi": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "pinyin": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "partOfSpeechVi": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "meaningVi": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "exampleHanzi": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "examplePinyin": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "exampleVi": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "usageNoteVi": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 400
+        },
+        "hskLevel": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerUid",
+        "hanzi",
+        "pinyin",
+        "partOfSpeechVi",
+        "meaningVi",
+        "exampleHanzi",
+        "examplePinyin",
+        "exampleVi",
+        "usageNoteVi",
+        "hskLevel",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPreferences" },
+      "description": "Private learner settings keyed by Firebase Auth UID."
+    },
+    "/users/{userId}/chatMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessageDoc" },
+      "description": "Learner's synced AI tutor chat messages."
+    },
+    "/users/{userId}/savedVocab/{vocabId}": {
+      "schema": { "$ref": "#/entities/SavedVocabDoc" },
+      "description": "Learner's bookmarked Mandarin vocabulary cards."
+    }
+  }
+}
